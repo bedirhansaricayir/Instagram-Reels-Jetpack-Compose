@@ -26,16 +26,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.reels.example.R
 import com.reels.example.core.util.noRippleClickable
+import com.reels.example.domain.model.VideoInfo
 
 @Composable
 fun RightBottomSection(
     modifier: Modifier = Modifier,
-    isLiked: Boolean,
-    likes: String,
-    comment: String,
-    send: String,
-    image: String,
-    onFavoriteClicked: () -> Unit
+    videoInfo: VideoInfo,
+    onFavoriteClicked: () -> Unit,
+    onCommentClicked: () -> Unit,
 ) {
     Column(
         modifier = modifier.padding(8.dp),
@@ -43,20 +41,25 @@ fun RightBottomSection(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         IconWithText(
-            icon = if (isLiked) R.drawable.ic_filled_favorite else R.drawable.ic_outlined_favorite,
-            text = likes,
-            iconColor = if (isLiked) Color.Red else Color.White,
+            icon = if (videoInfo.isLiked) R.drawable.ic_filled_favorite else R.drawable.ic_outlined_favorite,
+            text = videoInfo.likes,
+            iconColor = if (videoInfo.isLiked) Color.Red else Color.White,
             onClicked = onFavoriteClicked
         )
-        IconWithText(icon = R.drawable.ic_outlined_comment, text = comment, iconColor = Color.White)
-        IconWithText(icon = R.drawable.ic_dm, text = send, iconColor = Color.White)
+        IconWithText(
+            icon = R.drawable.ic_outlined_comment,
+            text = videoInfo.commentCount,
+            iconColor = Color.White,
+            onClicked = onCommentClicked
+        )
+        IconWithText(icon = R.drawable.ic_dm, text = videoInfo.send, iconColor = Color.White)
         Icon(
             modifier = Modifier.padding(vertical = 8.dp),
             imageVector = Icons.Outlined.MoreVert,
             contentDescription = "",
             tint = Color.White
         )
-        RoundedSoundImage(image = image)
+        RoundedSoundImage(image = videoInfo.soundImage)
         Spacer(modifier = Modifier.height(8.dp))
     }
 }

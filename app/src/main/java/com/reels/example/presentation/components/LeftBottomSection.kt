@@ -1,28 +1,40 @@
 package com.reels.example.presentation.components
 
+import android.util.Log
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,41 +57,41 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.reels.example.R
 import com.reels.example.core.util.noRippleClickable
+import com.reels.example.domain.model.VideoInfo
 
 @Composable
 fun LeftBottomSection(
     modifier: Modifier = Modifier,
-    userImage: String,
-    userTitle: String,
-    isFollowed: Boolean,
-    videoDescription: String,
-    soundTitle: String,
-    onFollowButtonClicked: () -> Unit
+    videoInfo: VideoInfo,
+    onFollowButtonClicked: () -> Unit,
+    taggedPeopleBarClicked: (taggedPeople: List<String>) -> Unit
 ) {
     Column(
-        modifier = modifier.padding(8.dp)
+        modifier = modifier.padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         UserSection(
-            image = userImage,
-            title = userTitle,
-            isFollowed = isFollowed,
+            videoInfo = videoInfo,
             onFollowButtonClicked = onFollowButtonClicked
         )
         VideoDescription(
-            text = videoDescription
+            modifier = Modifier.padding(8.dp),
+            videoInfo = videoInfo
         )
-        SoundTrackBar(
-            text = soundTitle
+
+        BottomDetailTrackBarItems(
+            modifier = Modifier,
+            videoInfo = videoInfo,
+            taggedPeopleBarClicked = taggedPeopleBarClicked
         )
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
 @Composable
 fun UserSection(
     modifier: Modifier = Modifier,
-    image: String,
-    title: String,
-    isFollowed: Boolean,
+    videoInfo: VideoInfo,
     onFollowButtonClicked: () -> Unit
 ) {
     Row(
@@ -87,10 +99,10 @@ fun UserSection(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        UserImage(image = image)
-        UserTitle(title = title)
+        UserImage(image = videoInfo.userImage)
+        UserTitle(title = videoInfo.userTitle)
         FollowButton(
-            isFollowed = isFollowed,
+            isFollowed = videoInfo.isUserFollowed,
             onClick = onFollowButtonClicked
         )
     }
@@ -154,17 +166,21 @@ fun FollowButton(
 @Composable
 fun VideoDescription(
     modifier: Modifier = Modifier,
-    text: String
+    videoInfo: VideoInfo
 ) {
     val scrollState = rememberScrollState()
     var expandedDesc by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
 
-    Column(modifier = Modifier.verticalScroll(scrollState).widthIn(max = (screenWidth/2).dp)) {
+    Column(
+        modifier = Modifier
+            .verticalScroll(scrollState)
+            .widthIn(max = (screenWidth / 1.3).dp)
+    ) {
         Text(
-            text = text,
-            fontSize = 14.sp,
+            text = videoInfo.description,
+            fontSize = 12.sp,
             maxLines = if (expandedDesc) Int.MAX_VALUE else 1,
             color = Color.White,
             overflow = TextOverflow.Ellipsis,
@@ -178,10 +194,71 @@ fun VideoDescription(
 
 }
 
+@Composable
+fun BottomDetailTrackBarItems(
+    modifier: Modifier = Modifier,
+    videoInfo: VideoInfo,
+    taggedPeopleBarClicked: (taggedPeople: List<String>) -> Unit
+) {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+    val soundTrackDp =
+        if (videoInfo.location != null && videoInfo.taggedPeople != null)
+            (screenWidth / 3).dp else if (videoInfo.location != null || videoInfo.taggedPeople != null)
+            (screenWidth / 2).dp else
+            (screenWidth / 1.5).dp
+
+    Row(
+        modifier = modifier.requiredWidthIn(max = (screenWidth / 1.3).dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start
+    ) {
+        DetailTrackBar(
+            modifier = Modifier
+                .widthIn(max = soundTrackDp),
+            icon = R.drawable.ic_music,
+            text = videoInfo.description
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        videoInfo.location?.let { location ->
+            DetailTrackBar(
+                modifier = Modifier
+                    .widthIn(max = 100.dp),
+                icon = R.drawable.ic_location,
+                text = location
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+
+        }
+        videoInfo.taggedPeople?.let { taggedPeople ->
+            if (taggedPeople.size == 1) {
+                DetailTrackBar(
+                    modifier = Modifier
+                        .widthIn(max = 100.dp)
+                        .noRippleClickable { taggedPeopleBarClicked(taggedPeople) },
+                    icon = R.drawable.ic_person,
+                    text = taggedPeople[0]
+                )
+            } else {
+                DetailTrackBar(
+                    modifier = Modifier
+                        .widthIn(max = 100.dp)
+                        .noRippleClickable { taggedPeopleBarClicked(taggedPeople) },
+                    icon = R.drawable.ic_person,
+                    text = taggedPeople.size.toString()
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+    }
+}
+
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SoundTrackBar(
+fun DetailTrackBar(
     modifier: Modifier = Modifier,
+    @DrawableRes icon: Int,
     text: String
 ) {
     Card(
@@ -189,20 +266,21 @@ fun SoundTrackBar(
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent,
         ),
-        border = BorderStroke(1.dp,Gray.copy(0.5f))
+        border = BorderStroke(1.dp, Gray.copy(0.5f))
     ) {
         Row(
             modifier = Modifier
-                .requiredWidthIn(max = 250.dp)
                 .background(Color.Black.copy(0.3f))
                 .padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_music),
+                painter = painterResource(id = icon),
                 contentDescription = "music",
                 modifier = Modifier.size(18.dp),
             )
+            Spacer(modifier = Modifier.width(2.dp))
+
             Text(
                 maxLines = 1,
                 modifier = Modifier.basicMarquee(),
